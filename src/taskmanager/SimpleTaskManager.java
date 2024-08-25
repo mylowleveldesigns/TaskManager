@@ -5,11 +5,12 @@ import exceptions.TaskNotFoundException;
 import model.*;
 import storage.activitystorage.ActivityLogStorage;
 import storage.taskstorage.TaskStorage;
+import taskutilities.Helper;
 import taskutilities.TaskFilter;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class SimpleTaskManager implements TaskManager {
@@ -17,30 +18,33 @@ public class SimpleTaskManager implements TaskManager {
     private final TaskStorage taskStorage;
     private final ActivityLogStorage history;
 
+    private final Helper helper;
+
     public SimpleTaskManager(TaskStorage taskStorage, ActivityLogStorage activityLogStorage) {
         this.taskStorage = taskStorage;
         this.history = activityLogStorage;
+        this.helper = new Helper();
     }
 
     @Override
-    public synchronized void addTask(Task task) throws TaskAlreadyExistsException {
+    public void addTask(Task task) throws TaskAlreadyExistsException {
         taskStorage.saveTask(task);
         logActivity(TaskAction.ADD, task, LocalDateTime.now());
     }
 
     @Override
-    public synchronized Task getTask(int taskId) throws TaskNotFoundException {
+    public Task getTask(int taskId) throws TaskNotFoundException {
         return taskStorage.getTask(taskId).orElseThrow(() -> new TaskNotFoundException("Task with ID " + taskId + " not found."));
     }
 
     @Override
-    public synchronized void modifyTask(Task task) throws TaskNotFoundException {
+    public void modifyTask(Task task) throws TaskNotFoundException {
         taskStorage.updateTask(task);
         logActivity(TaskAction.MODIFY, task, LocalDateTime.now());
     }
 
     @Override
-    public synchronized void removeTask(int taskId) throws TaskNotFoundException {
+    public void removeTask(int taskId) throws TaskNotFoundException {
         Task task = getTask(taskId);
         taskStorage.deleteTask(taskId);
         logActivity(TaskAction.REMOVE, task, LocalDateTime.now());
@@ -66,24 +70,55 @@ public class SimpleTaskManager implements TaskManager {
                 .filter(log -> log.getAction() == TaskAction.COMPLETE)
                 .count();
 
-        long spilledOver = logs.stream()
-                .filter(log -> taskStorage.getTask(log.getTaskId())
-                        .map(Task::isOverdue)
-                        .orElse(false))
-                .count();
-
+        long spilledOver = getSpilledOverTaskCount(logs, timePeriod);
 
         return new TaskStatistics(added, completed, spilledOver);
     }
 
+    private long getSpilledOverTaskCount(List<ActivityEntry> logs, TimePeriod timePeriod) {
+        // Get all logs where log.timestamp is before timePeriod.endTime
+        // Group logs by taskId
+        // Iterate over the groups and filter those tasks where deadline is between the timeperiod and log with action = complete is after deadline or not found
+
+
+        // Step 1: Filter logs where log.timestamp is before timePeriod.endTime
+        Map<Integer, List<ActivityEntry>> groupedLogs = logs.stream()
+                .filter(log -> log.getTimestamp().isBefore(timePeriod.getEndTime()))
+                .collect(Collectors.groupingBy(log -> log.getTask().id()));
+
+        // Step 2: Iterate over the groups and filter tasks based on the correct logic
+        return groupedLogs.values().stream()
+                .filter(taskLogs -> {
+                    Task task = taskLogs.get(0).getTask();
+                    boolean isDeadlineInPeriod = helper.isTimeWithinPeriod(task.deadline(), timePeriod);
+
+
+                    if (isDeadlineInPeriod) {
+                        boolean hasNotCompletedYet = taskLogs.stream().noneMatch(log -> log.getAction() == TaskAction.COMPLETE);
+
+                        boolean hasCompletionAfterDeadline = taskLogs.stream()
+                                .filter(log -> log.getAction() == TaskAction.COMPLETE)
+                                .allMatch(log -> log.getTimestamp().isAfter(task.deadline()));
+
+
+
+                        return hasCompletionAfterDeadline || hasNotCompletedYet;
+                    }
+                    return false;
+                })
+                .count();
+    }
+
     @Override
     public List<ActivityEntry> getActivityLog(TimePeriod timePeriod) {
-        //@Todo  Complete the funciton by iterating over Activity
-        return new ArrayList<>();
+        return history.getLogs(timePeriod)
+                .stream()
+                .filter( log -> helper.isTimeWithinPeriod(log.getTimestamp(), timePeriod))
+                .collect(Collectors.toList());
     }
 
     private void logActivity(TaskAction action, Task task, LocalDateTime localDateTime) {
-        history.logAction(action, task.id(), localDateTime);
+        history.logAction(action, task, localDateTime);
     }
 }
 

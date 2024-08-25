@@ -14,7 +14,7 @@ public class ConcurrentTaskStorage implements TaskStorage {
     private final ConcurrentHashMap<Integer, Task> tasks = new ConcurrentHashMap<>();
 
     @Override
-    public synchronized void saveTask(Task task) throws TaskAlreadyExistsException {
+    public void saveTask(Task task) throws TaskAlreadyExistsException {
         if (tasks.containsKey(task.id())) {
             throw new TaskAlreadyExistsException("Task with ID " + task.id() + " already exists.");
         }
@@ -27,7 +27,7 @@ public class ConcurrentTaskStorage implements TaskStorage {
     }
 
     @Override
-    public synchronized void updateTask(Task task) throws TaskNotFoundException {
+    public void updateTask(Task task) throws TaskNotFoundException {
         if (!tasks.containsKey(task.id())) {
             throw new TaskNotFoundException("Task with ID " + task.id() + " not found.");
         }
@@ -35,7 +35,7 @@ public class ConcurrentTaskStorage implements TaskStorage {
     }
 
     @Override
-    public synchronized void deleteTask(int taskId) throws TaskNotFoundException {
+    public void deleteTask(int taskId) throws TaskNotFoundException {
         if (tasks.remove(taskId) == null) {
             throw new TaskNotFoundException("Task with ID " + taskId + " not found.");
         }

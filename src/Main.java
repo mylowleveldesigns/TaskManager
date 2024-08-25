@@ -3,7 +3,7 @@ import storage.activitystorage.ListBasedActivityLogStorage;
 import storage.taskstorage.ConcurrentTaskStorage;
 import taskmanager.SimpleTaskManager;
 import taskmanager.TaskManager;
-import taskutilities.DefaultTaskFilter;
+import taskutilities.TaskFilter;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -37,29 +37,32 @@ public class Main {
             taskManager.addTask(task2);
             taskManager.addTask(task3);
 
+
             // modify a task with taskId = 1
             Set<String> newTags = new HashSet<>();
             newTags.add("work");
             newTags.add("updated");
             Task modifiedTask = new Task(1, "Updated Task 1", LocalDateTime.now().plusDays(3), newTags, false);
+            System.out.println("Task before modification - " + taskManager.getTask(1));
             taskManager.modifyTask(modifiedTask);
+            System.out.println("Task after modification- " + modifiedTask);
 
             // remove a task with taskId = 2
-            taskManager.removeTask(2);
+//            taskManager.removeTask(2);
 
 
             // Get and print statistics
-            TimePeriod timePeriodDayMinus1To1 = new TimePeriod(LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
-            TaskStatistics statistics = taskManager.getStatistics(timePeriodDayMinus1To1);
+            TimePeriod timePeriodDayMinus3To3 = new TimePeriod(LocalDateTime.now().minusDays(3), LocalDateTime.now().plusDays(3));
+            TaskStatistics statistics = taskManager.getStatistics(timePeriodDayMinus3To3);
             System.out.println("Task Statistics: " + statistics);
 
             // print activity log
-            List<ActivityEntry> activityLog = taskManager.getActivityLog(timePeriodDayMinus1To1);
+            List<ActivityEntry> activityLog = taskManager.getActivityLog(timePeriodDayMinus3To3);
             System.out.println("Activity Log: ");
             activityLog.forEach(System.out::println);
 
             // Filter tasks by tag
-            DefaultTaskFilter tagFilter = new DefaultTaskFilter("work", false, false);
+            TaskFilter tagFilter = new TaskFilter("work", false, false);
             List<Task> filteredTasks = taskManager.listTasks(tagFilter);
             System.out.println("Filtered Tasks (tag 'work'): ");
             filteredTasks.forEach(System.out::println);

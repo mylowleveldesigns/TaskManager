@@ -5,12 +5,12 @@ import java.time.LocalDateTime;
 public class ActivityEntry {
     private final TaskAction action;
 
-    private final int taskId;
+    private final Task task;
     private final LocalDateTime timestamp;
 
-    public ActivityEntry(TaskAction action, int taskId, LocalDateTime timestamp) {
+    public ActivityEntry(TaskAction action, Task task, LocalDateTime timestamp) {
         this.action = action;
-        this.taskId = taskId;
+        this.task = task;
         this.timestamp = timestamp;
     }
 
@@ -18,7 +18,7 @@ public class ActivityEntry {
     public String toString() {
         return "ActivityEntry{" +
                 "action=" + action +
-                ", task=" + taskId +
+                ", task=" + task +
                 ", timestamp=" + timestamp +
                 '}';
     }
@@ -31,7 +31,7 @@ public class ActivityEntry {
         return action;
     }
 
-    public int getTaskId() {
-        return taskId;
+    public Task getTask() {
+        return task;
     }
 }
